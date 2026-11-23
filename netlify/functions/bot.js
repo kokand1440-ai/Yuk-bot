@@ -16,7 +16,27 @@ const EX = {
   rasxod: 'rasxod yoqilgi isuzu 500000',
   mijoz: 'mijoz Ali qoqon 901234567',
 };
-const HELP = `📖 QANDAY YOZILADI\n\n🚚 Yuk:\nyuk Ali Vali isuzu 300000\n(1-mijoz — kimdan, 2-mijoz — kimga)\n\n💵 Pul oldim:\noldim Ali 200000\n\n🧾 Rasxod:\nrasxod yoqilgi isuzu 500000\nrasxod non 20000\n\n👤 Yangi mijoz:\nmijoz Ali qoqon 901234567\n\n📦 Yuk yetsa — bot yozgan xabarga JAVOB qilib "yetdi" deb yozing.\n❌ Xato bo'lsa — shu xabarga javob qilib "bekor" deb yozing.\n\n🚛 Mashinalar: ${Object.keys(MASH).join(', ')}\n⚠️ Bot javob bermasa — yozilmagan!`;
+const HELP = `📖 QANDAY YOZILADI
+
+🚚 Yuk:
+yuk Ali Vali isuzu 300000
+(1-mijoz — kimdan, 2-mijoz — kimga)
+
+💵 Pul oldim:
+oldim Ali 200000
+
+🧾 Rasxod:
+rasxod yoqilgi isuzu 500000
+rasxod non 20000
+
+👤 Yangi mijoz:
+mijoz Ali qoqon 901234567
+
+📦 Yuk yetsa — bot yozgan xabarga JAVOB qilib "yetdi" deb yozing.
+❌ Xato bo'lsa — shu xabarga javob qilib "bekor" deb yozing.
+
+🚛 Mashinalar: ${Object.keys(MASH).join(', ')}
+⚠️ Bot javob bermasa — yozilmagan!`;
 
 // ---------- yordamchilar ----------
 const CY = { а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'yo',ж:'j',з:'z',и:'i',й:'y',к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'x',ц:'s',ч:'ch',ш:'sh',щ:'sh',ъ:'',ы:'i',ь:'',э:'e',ю:'yu',я:'ya',қ:'q',ғ:'g',ў:'o',ҳ:'h' };
@@ -273,7 +293,21 @@ async function onCallback(q) {
 }
 
 exports.handler = async ev => {
-  if (ev.httpMethod !== 'POST') return { statusCode: 200, body: 'ok' };
+  if (ev.httpMethod !== 'POST') {
+    // Bir martalik webhook ulash: saytManzili/.netlify/functions/bot?setup=WEBHOOK_SECRET
+    const q = ev.queryStringParameters || {};
+    if (q.setup && E.WEBHOOK_SECRET && q.setup === E.WEBHOOK_SECRET) {
+      try {
+        const url = `https://${ev.headers.host}/.netlify/functions/bot`;
+        const r = await fetch(`${TG}/setWebhook`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url, secret_token: E.WEBHOOK_SECRET, allowed_updates: ['message', 'callback_query'] }),
+        });
+        return { statusCode: 200, headers: { 'Content-Type': 'text/plain; charset=utf-8' }, body: await r.text() };
+      } catch (e) { return { statusCode: 200, body: 'xato: ' + e.message }; }
+    }
+    return { statusCode: 200, body: 'ok' };
+  }
   if ((ev.headers['x-telegram-bot-api-secret-token'] || '') !== (E.WEBHOOK_SECRET || '\0')) return { statusCode: 401, body: '' };
   let u; try { u = JSON.parse(ev.body); } catch { return { statusCode: 200, body: '' }; }
   try { await handle(u); }
