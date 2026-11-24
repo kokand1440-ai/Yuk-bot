@@ -2,6 +2,7 @@
 // Telegram guruh -> Supabase. Qolip: yuk / oldim / rasxod / mijoz + yetdi, yolda, qaytdi, bekor
 const E = process.env;
 const { parse, norm: pnorm } = require('./lib/parse');
+const { parseOwner, isOwnerCmd, EX: OEX } = require('./lib/owner');
 const TG = `https://api.telegram.org/bot${E.BOT_TOKEN}`;
 const REST = `${E.SUPABASE_URL}/rest/v1`;
 const HDR = { apikey: E.SUPABASE_KEY, Authorization: `Bearer ${E.SUPABASE_KEY}`, 'Content-Type': 'application/json' };
@@ -129,15 +130,31 @@ async function handle(u) {
   const chat = m.chat.id, mid = m.message_id;
   const raw = m.text.replace(/^(\/\w+)@\w+/, '$1').trim();
   if (/^\/id\b/i.test(raw)) return void (await say(chat, `Chat ID: ${chat}\nSizning ID: ${m.from.id}`, mid));
-  if (String(chat) !== String(E.GROUP_ID)) return;
+  if (String(chat) !== String(E.GROUP_ID) && !(m.chat.type === 'private' && String(m.from.id) === String(E.BOSS_ID))) return;
 
   const by = String(m.from.id);
   const name = [m.from.first_name, m.from.last_name].filter(Boolean).join(' ') || m.from.username || by;
   if (/^\/(start|help|yordam)\b/i.test(raw)) return void (await say(chat, HELP, mid));
-  if (/^\/hisob\b/i.test(raw)) return void (await say(chat, '🚚 Hisob-kitob sayti:', mid, { reply_markup: { inline_keyboard: [[{ text: '🚚 Hisob-kitobni ochish', url: 'https://t.me/yuklar_hisob_bot/hisob' }]] } }));
+
+  const key = `${chat}:${mid}`;
+  const isBoss = by === String(E.BOSS_ID);
+  if (isBoss && /^\/(xojayin|hojayin)\b/i.test(raw))
+    return void (await say(chat, '👑 XOʻJAYIN BUYRUQLARI\n\n' + Object.values(OEX).join('\n') + '\n\nIshchi oldin "ishchi" bilan qoʻshiladi. Kommunal: elektr, gaz, suv, internet, ijara, chiqindi. Oila: oziq-ovqat, kiyim, bolalar, sogliq. Xato boʻlsa: xabarga javob qilib "bekor".', mid));
+  if (isOwnerCmd(raw)) {
+    if (!isBoss) { const p = parseSum(norm(raw)); if (p && p.sum >= 1000) await say(chat, '🔒 Bu buyruq faqat xoʻjayin uchun.', mid); return; }
+    const wk = await sb('/owner_qarz?select=kim&tur=eq.ishchi&del=eq.false');
+    const ow = parseOwner(raw, { workers: wk.map(x => x.kim) });
+    if (ow.error) return void (await say(chat, `❌ ${ow.error}`, mid));
+    const row = await ins(ow.table, { ...ow.row, sana: today(), t: Date.now(), by, by_name: name, tg_msg: key });
+    if (!row) return;
+    await jurnal(row.no, ow.table, by, { amal: 'yaratildi' });
+    const bm = await say(chat, `✅ #${row.no} ${ow.label}\n✍ ${name}\n\nXato bo'lsa: shu xabarga javob qilib "bekor" deb yozing.`, mid);
+    if (bm) await patch(ow.table, row.id, { bot_msg: bm });
+    return;
+  }
+
   const text = norm(raw.replace(/^\//, '')).replace(/sprinter\s*(\d)/g, 'sprinter$1');
   const kw = kind(text.split(' ')[0]);
-  const key = `${chat}:${mid}`;
   const fail = (msg, ex) => say(chat, `❌ ${msg}${ex ? `\nMisol: ${EX[ex]}` : ''}`, mid);
 
   if (!kw) { // oddiy suhbat — jim; lekin pulga o'xshasa ogohlantiramiz
@@ -153,10 +170,10 @@ async function handle(u) {
     const reason = (num ? args.slice(1) : args).join(' ');
     let x = null;
     if (num) {
-      for (const t of ['amal', 'xarj']) { const r = (await sb(`/${t}?no=eq.${num[1]}&select=*`))[0]; if (r) { x = { t, r }; break; } }
+      for (const t of ['amal', 'xarj', 'owner_xarj', 'owner_qarz']) { const r = (await sb(`/${t}?no=eq.${num[1]}&select=*`))[0]; if (r) { x = { t, r }; break; } }
     } else if (m.reply_to_message) {
       const rid = m.reply_to_message.message_id, k = encodeURIComponent(`${chat}:${rid}`);
-      for (const t of ['amal', 'xarj']) {
+      for (const t of ['amal', 'xarj', 'owner_xarj', 'owner_qarz']) {
         const r = (await sb(`/${t}?tg_msg=eq.${k}&select=*`))[0] || (await sb(`/${t}?bot_msg=eq.${rid}&select=*`))[0];
         if (r) { x = { t, r }; break; }
       }
