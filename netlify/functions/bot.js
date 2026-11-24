@@ -134,7 +134,7 @@ async function handle(u) {
   const by = String(m.from.id);
   const name = [m.from.first_name, m.from.last_name].filter(Boolean).join(' ') || m.from.username || by;
   if (/^\/(start|help|yordam)\b/i.test(raw)) return void (await say(chat, HELP, mid));
-
+  if (/^\/hisob\b/i.test(raw)) return void (await say(chat, '🚚 Hisob-kitob sayti:', mid, { reply_markup: { inline_keyboard: [[{ text: '🚚 Hisob-kitobni ochish', url: 'https://t.me/yuklar_hisob_bot/hisob' }]] } }));
   const text = norm(raw.replace(/^\//, '')).replace(/sprinter\s*(\d)/g, 'sprinter$1');
   const kw = kind(text.split(' ')[0]);
   const key = `${chat}:${mid}`;
