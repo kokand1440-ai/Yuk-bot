@@ -154,4 +154,4 @@ function parse(text, ctx, picks) {
   return { ok: true, kind: 'yuk', a: f.a, b: f.b, vehicle, amount: am.amount };
 }
 
-module.exports = { parse, norm, tokenize, cap, money, MIN, MAX };
+module.exports = { parse, norm, tokenize, cap, money, near, takeAmount, MIN, MAX };
