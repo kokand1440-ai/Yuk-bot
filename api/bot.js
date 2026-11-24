@@ -28,12 +28,4 @@ module.exports = async (req, res) => {
     return res.status(200).send('ok');
   }
 };
-bot.onText(/\/hisob/, (msg) => {
-  bot.sendMessage(msg.chat.id, "🚚 Hisob-kitob sayti:", {
-    reply_markup: {
-      inline_keyboard: [[
-        { text: "🚚 Hisob-kitobni ochish", url: "https://t.me/yuklar_hisob_bot/hisob" }
-      ]]
-    }
-  });
-});
+
